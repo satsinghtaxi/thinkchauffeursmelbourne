@@ -215,11 +215,11 @@
           </div>
           <div class="field">
             <label for="q-from">Pick-up location <span class="req">*</span></label>
-            <input id="q-from" name="Pick-up" type="text" placeholder="e.g. Melbourne Airport T2" required>
+            <input id="q-from" name="Pick-up" type="text" placeholder="Start typing an address" autocomplete="off" data-address-autocomplete required>
           </div>
           <div class="field">
             <label for="q-to">Drop-off location <span class="req">*</span></label>
-            <input id="q-to" name="Drop-off" type="text" placeholder="e.g. Southbank" required>
+            <input id="q-to" name="Drop-off" type="text" placeholder="Start typing an address" autocomplete="off" data-address-autocomplete required>
           </div>
           <div class="field">
             <label for="q-date">Date <span class="req">*</span></label>
@@ -249,9 +249,16 @@
               <option>5</option><option>6</option><option>7+</option>
             </select>
           </div>
+          <div class="field">
+            <label for="q-bags">Number of luggage items</label>
+            <select id="q-bags" name="Luggage">
+              <option>0</option><option>1</option><option>2</option><option>3</option>
+              <option>4</option><option>5</option><option>6</option><option>7</option><option>8+</option>
+            </select>
+          </div>
           <div class="field field--full">
-            <label for="q-notes">Flight number, luggage, child seats or special requests</label>
-            <textarea id="q-notes" name="Notes" rows="3" placeholder="e.g. QF412 arriving 8:15am, 2 large cases, 1 booster seat"></textarea>
+            <label for="q-notes">Flight number, child seats or special requests</label>
+            <textarea id="q-notes" name="Notes" rows="3" placeholder="e.g. QF412 arriving 8:15am, 1 booster seat"></textarea>
           </div>
         </div>
 

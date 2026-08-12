@@ -45,6 +45,147 @@
     window.addEventListener("scroll", onScroll, { passive: true });
   }
 
+  /* ---------- Address autocomplete ---------- */
+  document.querySelectorAll("[data-address-autocomplete]").forEach(function (input, inputIndex) {
+    var list = document.createElement("ul");
+    var listId = "address-suggestions-" + inputIndex;
+    var suggestions = [];
+    var activeIndex = -1;
+    var request;
+    var timer;
+
+    list.id = listId;
+    list.className = "address-suggestions";
+    list.setAttribute("role", "listbox");
+    list.hidden = true;
+    input.parentNode.appendChild(list);
+    input.setAttribute("aria-autocomplete", "list");
+    input.setAttribute("aria-controls", listId);
+    input.setAttribute("aria-expanded", "false");
+
+    function formatAddress(properties) {
+      var primary = properties.name ||
+        [properties.housenumber, properties.street].filter(Boolean).join(" ");
+      var parts = [
+        primary,
+        properties.suburb || properties.locality || properties.district,
+        properties.city,
+        properties.state,
+        properties.postcode
+      ].filter(Boolean);
+      return parts.filter(function (part, index) {
+        return parts.indexOf(part) === index;
+      }).join(", ");
+    }
+
+    function closeSuggestions() {
+      suggestions = [];
+      activeIndex = -1;
+      list.replaceChildren();
+      list.hidden = true;
+      input.setAttribute("aria-expanded", "false");
+      input.removeAttribute("aria-activedescendant");
+    }
+
+    function chooseSuggestion(index) {
+      if (!suggestions[index]) return;
+      input.value = suggestions[index];
+      closeSuggestions();
+      input.focus();
+    }
+
+    function setActive(index) {
+      var options = list.querySelectorAll("li");
+      if (!options.length) return;
+      activeIndex = (index + options.length) % options.length;
+      options.forEach(function (option, optionIndex) {
+        option.setAttribute("aria-selected", String(optionIndex === activeIndex));
+      });
+      input.setAttribute("aria-activedescendant", options[activeIndex].id);
+      options[activeIndex].scrollIntoView({ block: "nearest" });
+    }
+
+    function renderSuggestions(features) {
+      var seen = {};
+      suggestions = features
+        .filter(function (feature) {
+          return !feature.properties.countrycode || feature.properties.countrycode === "AU";
+        })
+        .map(function (feature) { return formatAddress(feature.properties); })
+        .filter(function (address) {
+          if (!address || seen[address]) return false;
+          seen[address] = true;
+          return true;
+        });
+
+      list.replaceChildren();
+      activeIndex = -1;
+      suggestions.forEach(function (address, index) {
+        var option = document.createElement("li");
+        option.id = listId + "-option-" + index;
+        option.setAttribute("role", "option");
+        option.setAttribute("aria-selected", "false");
+        option.textContent = address;
+        option.addEventListener("mousedown", function (event) {
+          event.preventDefault();
+          chooseSuggestion(index);
+        });
+        list.appendChild(option);
+      });
+      list.hidden = !suggestions.length;
+      input.setAttribute("aria-expanded", String(suggestions.length > 0));
+    }
+
+    function findAddresses() {
+      var query = input.value.trim();
+      if (query.length < 3) {
+        closeSuggestions();
+        return;
+      }
+      if (request) request.abort();
+      request = new AbortController();
+      var params = new URLSearchParams({
+        q: query + ", Victoria, Australia",
+        limit: "6",
+        lat: "-37.8136",
+        lon: "144.9631",
+        lang: "en"
+      });
+      fetch("https://photon.komoot.io/api/?" + params.toString(), { signal: request.signal })
+        .then(function (response) {
+          if (!response.ok) throw new Error("Address lookup failed");
+          return response.json();
+        })
+        .then(function (data) { renderSuggestions(data.features || []); })
+        .catch(function (error) {
+          if (error.name !== "AbortError") closeSuggestions();
+        });
+    }
+
+    input.addEventListener("input", function () {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(findAddresses, 280);
+    });
+    input.addEventListener("keydown", function (event) {
+      if (list.hidden) return;
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        setActive(activeIndex + 1);
+      } else if (event.key === "ArrowUp") {
+        event.preventDefault();
+        setActive(activeIndex - 1);
+      } else if (event.key === "Enter" && activeIndex >= 0) {
+        event.preventDefault();
+        chooseSuggestion(activeIndex);
+      } else if (event.key === "Escape") {
+        closeSuggestions();
+      }
+    });
+    input.addEventListener("blur", function () {
+      window.setTimeout(closeSuggestions, 120);
+    });
+  });
+
   /* ---------- Highlight current nav item ---------- */
   var here = location.pathname.split("/").pop() || "index.html";
   document.querySelectorAll(".nav__link").forEach(function (link) {
